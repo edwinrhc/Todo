@@ -1,13 +1,20 @@
 package com.stfonavi.app.todo.POJO;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
 import javax.persistence.*;
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
 
+@NamedQuery(name="User.findByEmailId", query="select u from  User u where u.email=:email")
+
+
+@NoArgsConstructor
 @Data
 @Entity
 @DynamicUpdate
@@ -40,4 +47,6 @@ public class User implements Serializable {
 
     @Column(name="role")
     private String role;
+
+
 }
