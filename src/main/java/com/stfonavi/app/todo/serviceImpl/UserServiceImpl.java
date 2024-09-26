@@ -13,11 +13,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 
 @Slf4j
@@ -34,6 +41,9 @@ public class UserServiceImpl implements UserService {
     CustomerUserDetailsService customerUserDetailsService;
 
     @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
     JwtUtil jwtUtil;
 
 
@@ -43,9 +53,27 @@ public class UserServiceImpl implements UserService {
         log.info("Inside signup {}", requestMap);
         try {
             if(validateSignUpMap(requestMap)){
-                User user = userDao.findByEmailId(requestMap.get("email"));
-                if(Objects.isNull(user)){
-                    userDao.save(getUserFromMap(requestMap));
+                User user = getUserFromMap(requestMap);
+                //Validar el objeto user
+                ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+                Validator validator = factory.getValidator();
+                Set<ConstraintViolation<User>> violations = validator.validate(user);
+
+                if(!violations.isEmpty()){
+                    StringBuilder errorMessage = new StringBuilder();
+                    for(ConstraintViolation<User> violation: violations){
+                        errorMessage.append(violation.getMessage()).append(", ");
+                    }
+                    errorMessage.setLength(errorMessage.length()-2);
+                    return TodoUtils.getResponseEntity(errorMessage.toString(),HttpStatus.BAD_REQUEST);
+                }
+
+                //Encriptamos la contraseña
+                user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+                User existingUser = userDao.findByEmailId(requestMap.get("email"));
+                if(Objects.isNull(existingUser)){
+                    userDao.save(user);
                     return TodoUtils.getResponseEntity("Successfully Registered",HttpStatus.OK);
                 }else{
                     return TodoUtils.getResponseEntity("Email already exits", HttpStatus.BAD_REQUEST);
@@ -54,9 +82,10 @@ public class UserServiceImpl implements UserService {
                 return TodoUtils.getResponseEntity(TodoConstants.INVALID_DATA,HttpStatus.BAD_REQUEST);
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("Error during signup: {}", ex.getMessage(), ex);
+            return TodoUtils.getResponseEntity(TodoConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return TodoUtils.getResponseEntity(TodoConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+
     }
 
 
@@ -95,7 +124,10 @@ public class UserServiceImpl implements UserService {
      * Metodos
      */
     private boolean validateSignUpMap(Map<String, String> requestMap) {
-        if (requestMap.containsKey("name") && requestMap.containsKey("contactNumber") && requestMap.containsKey("email") && requestMap.containsKey("password")) {
+        if (requestMap.containsKey("name") &&
+            requestMap.containsKey("contactNumber") &&
+            requestMap.containsKey("email") &&
+            requestMap.containsKey("password")) {
             return true;
         }
         return false;
