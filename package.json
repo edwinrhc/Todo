@@ -1,0 +1,16 @@
+{
+  "name": "todo",
+  "version": "1.0.0",
+  "description": "Este proyecto es una aplicación de gestión de tareas (ToDo), permite a los usuarios gestionar sus tareas de manera eficiente. Incluye funcionalidad de login y autorización mediante Spring Security.",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "tailwindcss build src/main/resources/static/css/tailwind.css -o src/main/resources/static/css/output.css"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13"
+  }
+}
