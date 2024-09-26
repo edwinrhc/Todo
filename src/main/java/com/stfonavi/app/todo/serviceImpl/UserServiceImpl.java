@@ -1,6 +1,6 @@
 package com.stfonavi.app.todo.serviceImpl;
 
-import com.stfonavi.app.todo.JWT.CustomerUserDetailsService;
+import com.stfonavi.app.todo.JWT.CustomerUsersDetailsService;
 import com.stfonavi.app.todo.JWT.JwtUtil;
 import com.stfonavi.app.todo.POJO.User;
 import com.stfonavi.app.todo.constents.TodoConstants;
@@ -13,7 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -38,7 +40,7 @@ public class UserServiceImpl implements UserService {
     AuthenticationManager authenticationManager;
 
     @Autowired
-    CustomerUserDetailsService customerUserDetailsService;
+    CustomerUsersDetailsService customerUsersDetailsService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -52,34 +54,34 @@ public class UserServiceImpl implements UserService {
 
         log.info("Inside signup {}", requestMap);
         try {
-            if(validateSignUpMap(requestMap)){
+            if (validateSignUpMap(requestMap)) {
                 User user = getUserFromMap(requestMap);
                 //Validar el objeto user
                 ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
                 Validator validator = factory.getValidator();
                 Set<ConstraintViolation<User>> violations = validator.validate(user);
 
-                if(!violations.isEmpty()){
+                if (!violations.isEmpty()) {
                     StringBuilder errorMessage = new StringBuilder();
-                    for(ConstraintViolation<User> violation: violations){
+                    for (ConstraintViolation<User> violation : violations) {
                         errorMessage.append(violation.getMessage()).append(", ");
                     }
-                    errorMessage.setLength(errorMessage.length()-2);
-                    return TodoUtils.getResponseEntity(errorMessage.toString(),HttpStatus.BAD_REQUEST);
+                    errorMessage.setLength(errorMessage.length() - 2);
+                    return TodoUtils.getResponseEntity(errorMessage.toString(), HttpStatus.BAD_REQUEST);
                 }
 
                 //Encriptamos la contraseña
                 user.setPassword(passwordEncoder.encode(user.getPassword()));
 
                 User existingUser = userDao.findByEmailId(requestMap.get("email"));
-                if(Objects.isNull(existingUser)){
+                if (Objects.isNull(existingUser)) {
                     userDao.save(user);
-                    return TodoUtils.getResponseEntity("Successfully Registered",HttpStatus.OK);
-                }else{
+                    return TodoUtils.getResponseEntity("Successfully Registered", HttpStatus.OK);
+                } else {
                     return TodoUtils.getResponseEntity("Email already exits", HttpStatus.BAD_REQUEST);
                 }
-            }else{
-                return TodoUtils.getResponseEntity(TodoConstants.INVALID_DATA,HttpStatus.BAD_REQUEST);
+            } else {
+                return TodoUtils.getResponseEntity(TodoConstants.INVALID_DATA, HttpStatus.BAD_REQUEST);
             }
         } catch (Exception ex) {
             log.error("Error during signup: {}", ex.getMessage(), ex);
@@ -88,11 +90,38 @@ public class UserServiceImpl implements UserService {
 
     }
 
-
-
     @Override
     public ResponseEntity<String> login(Map<String, String> requestMap) {
-        return null;
+
+        log.info("Inside login");
+        try {
+            Authentication auth = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(requestMap.get("email"), requestMap.get("password")));
+
+            if (auth.isAuthenticated()) {
+                // Si el usuario esta verificado y habilitado
+                if (customerUsersDetailsService.getUserDetail().getStatus().equalsIgnoreCase("true")) {
+                    //Genera y retorna el token JWT
+                    return new ResponseEntity<>("{\"token\":\"" +
+                            jwtUtil.generateToken(
+                                    customerUsersDetailsService.getUserDetail().getEmail(),
+                                    customerUsersDetailsService.getUserDetail().getRole()) + "\" }",
+                            HttpStatus.OK);
+                } else {
+                    return new ResponseEntity<>("{\"message\":\"" + "Wait for admin approval." + "\"}", HttpStatus.BAD_REQUEST);
+                }
+            }
+
+        } catch (BadCredentialsException ex) {
+                // Contraseñas o credenciales incorrectos
+            log.error("Bad credentials: {}", ex.getMessage());
+            return new ResponseEntity<>("{\"message\":\""+"Invalid email or password."+"\"}",HttpStatus.UNAUTHORIZED);
+
+        } catch (Exception ex) {
+            log.error("Error during Inside login: {}", ex.getMessage(), ex);
+            return TodoUtils.getResponseEntity(TodoConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<String>("{\"message\":\"" + "Bad Credentials." + "\"}", HttpStatus.BAD_REQUEST);
     }
 
     @Override
@@ -125,9 +154,9 @@ public class UserServiceImpl implements UserService {
      */
     private boolean validateSignUpMap(Map<String, String> requestMap) {
         if (requestMap.containsKey("name") &&
-            requestMap.containsKey("contactNumber") &&
-            requestMap.containsKey("email") &&
-            requestMap.containsKey("password")) {
+                requestMap.containsKey("contactNumber") &&
+                requestMap.containsKey("email") &&
+                requestMap.containsKey("password")) {
             return true;
         }
         return false;

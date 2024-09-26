@@ -2,6 +2,7 @@ package com.stfonavi.app.todo.JWT;
 
 import com.stfonavi.app.todo.dao.UserDao;
 
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.User;
@@ -15,7 +16,7 @@ import java.util.Objects;
 
 @Slf4j
 @Service
-public class CustomerUserDetailsService implements UserDetailsService {
+public class CustomerUsersDetailsService implements UserDetailsService {
 
     @Autowired
     UserDao userDao;
@@ -33,4 +34,7 @@ public class CustomerUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("User not found.");
     }
 
+    public com.stfonavi.app.todo.POJO.User getUserDetail() {
+        return userDetail;
+    }
 }
