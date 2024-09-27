@@ -16,4 +16,9 @@ public class ViewController {
     public String registerPage(Model model){
         return "register";
     }
+
+    @GetMapping("/dashboard")
+    public String dashboard(Model model){
+        return "dashboard";
+    }
 }

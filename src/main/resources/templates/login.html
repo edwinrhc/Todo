@@ -57,6 +57,7 @@
                 const result = await response.json();
                 // Procesar el éxito (redirigir o mostrar mensaje)
                 alert("Login successful!");
+                window.location.href = "/dashboard";
             } else {
                 // Mostrar error en la vista
                 document.getElementById("error").classList.remove("hidden");
