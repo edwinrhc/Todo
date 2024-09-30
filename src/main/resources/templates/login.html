@@ -55,8 +55,10 @@
 
             if (response.ok) {
                 const result = await response.json();
+                const token = result.token;
                 // Procesar el éxito (redirigir o mostrar mensaje)
-                alert("Login successful!");
+                localStorage.setItem("jwtToken", token);
+                console.log(token)
                 window.location.href = "/dashboard";
             } else {
                 // Mostrar error en la vista
